@@ -1,13 +1,19 @@
 ﻿<?
-if(isset($_GET["done"])){
-	session_destroy();
-	die("<script>window.location = 'http://vote.anewamercia.com/touchvote.php?thanks'</script>");
-}
 session_start();
 $password = '';
 $pass = '';
 include_once("connect.php");
 $mysqli = new mysqli($GLOBALS['hostname'], $GLOBALS['username'], $GLOBALS['password'], $GLOBALS['database']);
+$vote_id = $_SESSION["vote_id"];
+if(isset($_GET["done"])){
+	$sql = "SELECT count(*) FROM votes WHERE vote_candidate_id = 0";
+	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
+	$row = $result->fetch_row();
+	$pusher->trigger('vote_admin', 'ticket_count', $row[0]);
+	$pusher->trigger('vote_admin', 'user_voted', $vote_id);
+	session_destroy();
+	die("<script>window.location = 'http://vote.anewamercia.com/touchvote.php?thanks'</script>");
+}
 $votepass_hash = md5($votepassword);
 if($_COOKIE["VotePass"] != $votepass_hash && $pass_hash != $votepass_hash) { 
 header('HTTP/1.1 403 Forbidden');
@@ -15,7 +21,6 @@ include("votelogin.php");
 die();
 }
 $user = $_SESSION["user_id"];
-$vote_id = $_SESSION["vote_id"];
 if(isset($_POST["candidate"])){
 	$_SESSION["candidate"] = $_POST["candidate"];
 	if($_SESSION["candidate"] == 1){
@@ -40,6 +45,7 @@ if(isset($_GET["doQ"])){
 	$a = filter_var($_POST['a'], FILTER_SANITIZE_NUMBER_INT);
 	
 	$sql = "UPDATE exit_poll_results SET result_answer = '$a' WHERE user_id = '$user' AND result_question = '$q'";
+	//echo $sql;
 	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
 	die("ok");
 }
@@ -257,14 +263,13 @@ hr{
 	    	var val = $(this).val(), nameval = parseInt($(this).attr("name")), inputobj = $(this), q1val = $('input:radio[name=1]:checked').val(), q2val = $('input:radio[name=2]:checked').val(), q3val = $('input:radio[name=3]:checked').val(), q4val = $('input:radio[name=4]:checked').val(), q5val = $('input:radio[name=5]:checked').val();
 	    	$('input[name="'+nameval+'"]').css('content', 'url("/img/checkbox-unchecked.jpg")');
 	    	$(this).css('content', 'url("/img/loader.gif")');
-		    $.post('vote3.php?doQ', {q : name, a : val}, function(data){
+		    $.post('vote3.php?doQ', {q : nameval, a : val}, function(data){
 		    inputobj.css('content', 'url("/img/checkbox-checked.jpg")');
 			   if(data != 'ok') {
 			   	alert(data); 
 			   	} else {
 			   	totalcount = totalcount + nameval;
 			   	inputobj.parent().effect("highlight", {}, 1000);
-			   	console.log(q1val + ' ' +q2val + ' ' +q3val + ' ' +q4val + ' ' +q5val);
 			   	if(q1val > 0 && q2val > 0 && q3val > 0 && q4val > 0 && q5val > 0 ) $("#go").removeAttr("disabled");
 			   }
 		    });

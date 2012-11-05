@@ -91,7 +91,7 @@ if(isset($_GET["thanks"])){
 ?>
 <div class="alert alert-success fade in" id="alert">
 			    	<button type="button" class="close" data-dismiss="alert">x</button>
-			    	<b>Exit poll submitted.</b> Thanks for voting! GO AMERCIA!
+			    	<h3><b>Done.</b> Thanks for voting & GO AMERCIA!</h3>
 			    </div> 
 			</div>
 <?
@@ -100,12 +100,14 @@ if(isset($_GET["thanks"])){
     </div>
 
     <div class="row-fluid">
-	    <div class="span12" style="text-align:center;padding-top:100px;" id="">
+	    <div class="span12" style="text-align:center;padding-top:100px;" id="votediv">
 	    <h1>Election for President of Amercia</h1>
+	    <div id="voteaction" style="<? if(isset($_GET["thanks"])){ echo "display:none;"; }?>">
+	    <div id="nextvoterdiv" style="display:none;"><h3>Welcome, voter #<span id="nextvoter">000</span>.</h3></div>
 	    <button class="btn btn-large btn-success" style="padding:40px 80px; margin-top:40px; font-size:20px;" onclick="goVote2();" id="letsgo" disabled="disabled">Let's vote!</button>
-	    <div style="padding-top:20px;">
-	    	<div id="nextvoterdiv" style="display:none;">Current voter: #<span id="nextvoter">000</span></div>
-	    	<div id="pendingvotersdiv" style="display:none;"><span id="pendingvoters">No</span> pending voters</div>
+	    <div style="padding-top:40px;">
+	    		    	<div id="pendingvotersdiv" style="display:none;"><span id="pendingvoters">No</span> voters in line</div>
+	    </div>
 	    </div>
 	    </div>
     </div>
@@ -142,18 +144,23 @@ if(isset($_GET["thanks"])){
 				 	$('#letsgo').removeAttr("disabled");
 				 	$('#nextvoterdiv').show();
 				 	$('#nextvoter').html(data.next_voter);
-				 	if(data.pending_voters > 1){
+				 	/*if(data.pending_voters > 2){
 				 		$('#pendingvotersdiv').show();
-					 	$('#pendingvoters').html(data.pending_voters);
+					 	$('#pendingvoters').html(data.pending_voters-1);
 				 	} else {
 					 	$('#pendingvotersdiv').hide();
-				 	}
+				 	}*/
+			    } else {
+			    $('#letsgo').attr("disabled","disabled");
+			    	$('#nextvoterdiv').hide();
+				   $('#pendingvotersdiv').hide(); 
 			    }
 		    }, "json");
 		    }
 	    $(function(){
 	    	getVoters();
 		    setTimeout( function() {   $("#alert").alert('close'); }, 5000);
+		    setTimeout( function() {   $("#voteaction").fadeIn(2000); }, 10000);
 	    });
     </script>
     <!-- Start of StatCounter Code for Default Guide -->

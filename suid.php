@@ -12,6 +12,8 @@ if (mysqli_connect_errno()) {printf("Connect failed: %s\n", mysqli_connect_error
 if(isset($_GET["clear"])){
 	$sql = "DELETE FROM votes WHERE vote_candidate_id = 0";
 	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
+	$sql = "DELETE  ep.* FROM exit_poll_results AS ep LEFT JOIN votes AS v ON v.user_id = ep.user_id WHERE v.vote_id IS NULL";
+	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
 	$status = "Queue cleared";
 	$pusher->trigger('vote_admin', 'ticket_count', 0);
 }
@@ -26,13 +28,14 @@ $status = "othererror";
 		$row = $result->fetch_row();
 		$voter_number = $row[0];
 		$status = "alreadyvoted";
-		$data = array("message" => "SUID xxx$suid already voted", "status" => $status, "voter_number" => $voter_number);
+		$data = array("message" => "SUID xxx$suid already registered (Voter #$voter_number)", "status" => $status, "voter_number" => $voter_number);
 		$pusher->trigger('vote_admin', 'voter_reg_error', $data);
 		//die('alreadyvoted'); 
 	} else {
 		$status = "ok";
 		$sql = "INSERT INTO votes VALUES (null,0,'$suid_hash',null)";
 		if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
+				$voter_number = $mysqli->insert_id;
 		
 		$sql = "INSERT INTO exit_poll_results VALUES (null,1,0,'$suid_hash',null)";
 		if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
@@ -46,8 +49,10 @@ $status = "othererror";
 		$sql = "INSERT INTO exit_poll_results VALUES (null,4,0,'$suid_hash',null)";
 		if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
 		
-		$voter_number = $mysqli->insert_id;
-		$data = array("message" => "Voter #$voter_number registered (SUID: x$suid)", "status" => $status, "voter_number" => $voter_number);
+		$sql = "INSERT INTO exit_poll_results VALUES (null,5,0,'$suid_hash',null)";
+		if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
+		
+		$data = array("message" => "Voter #$voter_number ready to vote (SUID: x$suid)", "status" => $status, "voter_number" => $voter_number);
 		$pusher->trigger('vote_admin', 'voter_reg', $data);
 	}
 	$sql = "SELECT count(*) FROM votes WHERE vote_candidate_id = 0";
@@ -168,11 +173,8 @@ $status = "othererror";
 
     var pusher = new Pusher('4158bb9ce27c36289add'), channel = pusher.subscribe('vote_admin'), count = 0;
     channel.bind('voter_reg', function(data) {
-    			count++;
-    			var countst = String(count);
       			var status = "alert-success";
-			    $("#alerts").prepend('<div class=\'alert '+status+' fade in\' id=\'alert-'+countst+'\'>'+data.message+'</div>');
-			    setTimeout( function() {   $('#alert-'+countst).alert('close'); }, 10000);
+			    $("#alerts").prepend('<div class=\'alert '+status+' fade in\' id=\'alert-'+data.voter_number+'\'>'+data.message+'</div>');
     });
     channel.bind('voter_reg_error', function(data) {
     			count++;
@@ -190,6 +192,9 @@ $status = "othererror";
 			    } else {
 				    $("#ticketcount").html(data+" voting tickets");
 			    }
+    });
+    channel.bind('user_voted', function(data) {
+    	$('#alert-'+data).alert('close');
     });
 	    function addNum(num){
 	    	var inVal = $('#input_suid').val();
@@ -219,7 +224,7 @@ $status = "othererror";
 		    	}
 	    }
 	    $(window).keydown(function(event){
-	    	event.preventDefault();
+	    	if($('.keypadbtn').is(':disabled')) return false;
 		    if(event.keyCode == 48){
 			    $("#btnzero").click();
 		    } else if(event.keyCode == 49){
@@ -241,6 +246,7 @@ $status = "othererror";
 		    } else if(event.keyCode == 57){
 			    $("#btnnine").click();
 		    } else if(event.keyCode == 8){
+		    	    	event.preventDefault();
 			    $("#btndel").click();
 		    }
 	    });
