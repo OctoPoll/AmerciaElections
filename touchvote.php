@@ -2,7 +2,9 @@
 session_start();
 $password = '';
 $pass = '';
+//if(isset($_GET["thanks"])) session_destroy();
 include_once("connect.php");
+include_once("pushersettings.php");
 $mysqli = new mysqli($GLOBALS['hostname'], $GLOBALS['username'], $GLOBALS['password'], $GLOBALS['database']);
 $votepass_hash = md5($votepassword);
 if($_COOKIE["VotePass"] != $votepass_hash && $pass_hash != $votepass_hash) { 
@@ -11,17 +13,34 @@ include("votelogin.php");
 die();
 }
 if(isset($_GET["check"])) {
-	$sql = "SELECT * FROM votes WHERE vote_candidate_id = 0 order by vote_time asc";
-	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');	
-	$count = $result->num_rows;
-	$vote = $result->fetch_array(MYSQLI_ASSOC);
-	$_SESSION["user_id"] = $vote["user_id"];
-	$_SESSION["vote_id"] = $vote["vote_id"];
-	$arr = array('pending_voters' => $count);
-	if($count) $arr["next_voter"] = $vote["vote_id"];
-	$status = json_encode($arr);
+	if($_SESSION["vote_id"] > 0){
+		$arr = array('status' => 'claimed','pending_voters' => 1, 'next_voter' => $_SESSION["vote_id"]);
+		$status = json_encode($arr);	
+	} else {
+		$sql = "SELECT * FROM votes WHERE vote_candidate_id = 0 order by vote_id asc limit 1";
+		if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');	
+		$count = $result->num_rows;
+		$vote = $result->fetch_array(MYSQLI_ASSOC);
+		$_SESSION["user_id"] = $vote["user_id"];
+		$_SESSION["vote_id"] = $vote["vote_id"];
+		$arr = array('status' => 'unclaimed','pending_voters' => $count);
+		if($count) {$arr["next_voter"] = $vote["vote_id"];
+		$sql = "UPDATE votes SET vote_candidate_id = '999' WHERE vote_id = '".$vote["vote_id"]."'";
+		if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
+		$pusher->trigger('vote_admin', 'ticket_claimed', $vote["vote_id"]);}
+				$status = json_encode($arr);
+
+	}
 	die($status);
-	} 
+} 
+	
+	if(isset($_GET["next"])){
+			if(!$_SESSION["vote_id"]) {
+		die("<script>window.location = 'http://vote.anewamercia.com/touchvote.php'</script>");
+		} else {
+		die("<script>window.location = 'http://vote.anewamercia.com/vote2.php'</script>");	
+		}
+	}
 ?> 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
 <html lang="en">
@@ -38,6 +57,9 @@ if(isset($_GET["check"])) {
     <style>
       body {
         padding-top: 0; /* 60px to make the container go all the way to the bottom of the topbar */
+        background: url('img/bg.jpg') repeat-y;
+        background-size: 100%;
+        color:white;
       }
       h3 {
 	      line-height: 25px;
@@ -72,46 +94,41 @@ if(isset($_GET["check"])) {
        <script src="/js/bootstrap-transition.js"></script>
   </head>
   <body>
-     <div class="navbar navbar-inverse navbar-static-top" style="display:;">
-     	<div class="navbar-inner">
-          <a class="brand" href="/touchvote.php">Amercia Elections</a>
-          <div class="pull-right">
-          	<ul class="nav" >
-	          <li>
-		         <!-- <a href="votelogin.php?logout">logout</a>-->
-		          </li>
-		         </ul>
-          </div>
-      </div>
-    </div>
-    <div class="container-fluid" style="padding-top:10px;">
-    <div style="height:30px;" id="status">
-<?
-if(isset($_GET["thanks"])){
-?>
-<div class="alert alert-success fade in" id="alert">
-			    	<button type="button" class="close" data-dismiss="alert">x</button>
-			    	<h3><b>Done.</b> Thanks for voting & GO AMERCIA!</h3>
-			    </div> 
-			</div>
-<?
-}
-?>
+
+    <div class="container-fluid" style="padding-top:;">
+    	    <div style="padding:30px 0 40px 0;text-align:center;"><img src="img/banner.png" /></div>
+
+    <div style="text-align:center;">
+	    <img src="img/title.png" />
     </div>
 
     <div class="row-fluid">
-	    <div class="span12" style="text-align:center;padding-top:100px;" id="votediv">
-	    <h1>Election for President of Amercia</h1>
+	    <div class="span12" style="text-align:center;padding-top:20px;" id="votediv">
+	    
 	    <div id="voteaction" style="<? if(isset($_GET["thanks"])){ echo "display:none;"; }?>">
-	    <div id="nextvoterdiv" style="display:none;"><h3>Welcome, voter #<span id="nextvoter">000</span>.</h3></div>
-	    <button class="btn btn-large btn-success" style="padding:40px 80px; margin-top:40px; font-size:20px;" onclick="goVote2();" id="letsgo" disabled="disabled">Let's vote!</button>
+	    <div style="height:40px;"><div id="nextvoterdiv" style="display:none;"><h3>Welcome, voter #<span id="nextvoter">000</span>.</h3></div></div>
+	    <button class="btn btn-large btn-success" style="padding:60px 100px; margin-top:40px; font-size:20px;" onclick="goVote2();" id="letsgo" disabled="disabled">Let's vote!</button>
 	    <div style="padding-top:40px;">
 	    		    	<div id="pendingvotersdiv" style="display:none;"><span id="pendingvoters">No</span> voters in line</div>
 	    </div>
 	    </div>
 	    </div>
     </div>
+<?
+if(isset($_GET["thanks"])){
+?>
+    <div style="height:60px;margin-top:40px;width:80%;margin:auto;" id="status">
 
+<div class="alert alert-success fade in" style="text-align:center;" id="alert">
+			    	<button type="button" class="close" data-dismiss="alert">x</button>
+			    	<h1><b>You're done!</b> Thanks for voting & GO AMERCIA!</h1>
+			    </div> 
+			</div>
+			    </div>
+
+<?
+}
+?>
     </div>
     <script type="text/javascript">
             // Enable pusher logging - don't include this in production
@@ -141,9 +158,11 @@ if(isset($_GET["thanks"])){
 		    function getVoters(){
 			    $.get('touchvote.php?check', function(data){
 			    if(data.pending_voters > 0){
-				 	$('#letsgo').removeAttr("disabled");
-				 	$('#nextvoterdiv').show();
+			    console.log(data.status);
 				 	$('#nextvoter').html(data.next_voter);
+				 	$('#nextvoterdiv').fadeIn(1000, function(){
+					 	$('#letsgo').removeAttr("disabled");
+				 	});
 				 	/*if(data.pending_voters > 2){
 				 		$('#pendingvotersdiv').show();
 					 	$('#pendingvoters').html(data.pending_voters-1);
@@ -157,10 +176,14 @@ if(isset($_GET["thanks"])){
 			    }
 		    }, "json");
 		    }
+		    var id;	
+    id = setInterval(function() {
+	   getVoters();
+	}, 30000);
 	    $(function(){
 	    	getVoters();
 		    setTimeout( function() {   $("#alert").alert('close'); }, 5000);
-		    setTimeout( function() {   $("#voteaction").fadeIn(2000); }, 10000);
+		    setTimeout( function() {   $("#voteaction").fadeIn(2000); }, 5000);
 	    });
     </script>
     <!-- Start of StatCounter Code for Default Guide -->

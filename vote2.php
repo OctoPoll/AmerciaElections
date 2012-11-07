@@ -2,12 +2,16 @@
 session_start();
 $username=""; $password=""; $database="";$hostname = "";
 include_once("connect.php");
+$mysqli = new mysqli($GLOBALS['hostname'], $GLOBALS['username'], $GLOBALS['password'], $GLOBALS['database']);
+include_once("pushersettings.php");
 $votepass_hash = md5($votepassword);
 if($_COOKIE["VotePass"] != $votepass_hash && $pass_hash != $votepass_hash) { 
 header('HTTP/1.1 403 Forbidden');
 include("votelogin.php");
 die();
 }
+if(!$_SESSION["vote_id"]) die("<script>window.location = 'http://vote.anewamercia.com/touchvote.php'</script>");
+$pusher->trigger('vote_admin', 'user_voting', $_SESSION["vote_id"]);
 //if(!isset($_SESSION["user"])) $_SESSION["user"] = time();
 ?> 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
@@ -24,6 +28,8 @@ die();
     <link href="css/bootstrap.css" rel="stylesheet">
     <style>
       body {
+      background: url('img/bg.jpg') repeat-y;
+		background-size: 100%;
         padding-top: 0; /* 60px to make the container go all the way to the bottom of the topbar */
       }
       h3 {
@@ -55,26 +61,29 @@ die();
 
   </head>
   <body>
-     <div class="navbar navbar-inverse navbar-static-top" style="display:;">
-           	<div class="navbar-inner">
-          <a class="brand" href="/touchvote.php">Amercia Elections</a>
-          <div class="pull-right">
-          	<ul class="nav" >
-	          <li>
-		          <!--<a href="votelogin.php?logout">logout</a>-->
-		          </li>
-		         </ul>
-          </div>
-      </div>
-    </div>
+     	<script type="text/javascript">
+		<!--//--><![CDATA[//><!--
+
+			if (document.images) {
+				img1 = new Image();
+				img2 = new Image();
+				img3 = new Image();
+				img1.src = "/img/diaz-potter-checked.png";
+				img2.src = "/img/lawrence-taylor-checked.png";
+				img3.src = "/img/rhodes-countrymen-checked.png";
+			}
+
+		//--><!]]>
+	</script>
     <div class="container-fluid" style="padding-top:10px;">
     <div class="row-fluid">
-	    <div class="span12" style="text-align:center;padding-top:60px;" id="">
-	    <h1>Choose a candidate for President of Amercia</h1>
-	    <div id=""><button class="btn btn-large votebutton" style="" id="candidate-1" onclick="doVote(1);"><span  style="font-size:22px;font-weight:bold;">Matt Diaz</span><br /><span style="font-size:16px;font-style:italic;">Democratic party</span></button></div>
-	    <div id=""><button class="btn btn-large votebutton" style="" id="candidate-2" onclick="doVote(2);"><span  style="font-size:22px;font-weight:bold;">Robert Lawrence</span><br /><span style="font-size:16px;font-style:italic;">Republican party</span></button></div>
-	    <div id=""><button class="btn btn-large votebutton" style="" id="candidate-3" onclick="doVote(3);"><span  style="font-size:22px;font-weight:bold;">Carter Rhodes</span><br /><span style="font-size:16px;font-style:italic;">Everyone is invited to this Party</span></button></div>
-	    </div>
+	    <div class="span12" style="text-align:center;padding-top:20px;" id="">
+	    <div><img src="img/banner.png" /></div>
+	    <div style="margin:40px 0;"><img src="img/title.png" /></div>
+	    <div id=""><button class="" style="background-color:rgba(255,0,0,0);border:solid 1px white;margin:5px 0;color:white;width:780px;height:166px;" id="candidate-1" onclick="doVote(1);"><img src="img/diaz-potter.png"></button></div>
+	    <div id=""><button class="" style="background-color:rgba(255,0,0,0);border:solid 1px white;margin:5px 0;color:white;width:780px;height:166px;" id="candidate-2" onclick="doVote(2);"><img src="img/lawrence-taylor.png"></button></div>
+	    <div id=""><button class="" style="background-color:rgba(255,0,0,0);border:solid 1px white;margin:5px 0;margin-bottom:20px;color:white;width:780px;height:166px;" id="candidate-3" onclick="doVote(3);"><img src="img/rhodes-countrymen.png"></button></div>
+	    	    </div>
     </div>
 
     </div>
@@ -94,7 +103,14 @@ die();
 	 	}
 	 	function doVote(c){
 	 		$('.votebutton').attr("disabled","disabled");
-	 		$('#candidate-'+c).html("Submitting...");
+	 		//$('#candidate-'+c).html("Submitting...");
+	 		if(c == 1){
+		 		$('#candidate-'+c+' img').attr("src","img/diaz-potter-checked.png");
+	 		} else if(c == 2){
+		 		$('#candidate-'+c+' img').attr("src","img/lawrence-taylor-checked.png");
+	 		} else if(c == 3){
+		 		$('#candidate-'+c+' img').attr("src","img/rhodes-countrymen-checked.png");
+	 		}
 		 	$.post('vote3.php', { candidate : c }, function(data){
 		 		if(data == 'success'){
 			 		window.location.href = "http://vote.anewamercia.com/vote3.php";

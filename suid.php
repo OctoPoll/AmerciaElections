@@ -1,6 +1,7 @@
 <?
 $username=""; $password=""; $database="";$hostname = "";
 include_once("connect.php");
+include_once("pushersettings.php");
 $votepass_hash = md5($votepassword);
 if($_COOKIE["VotePass"] != $votepass_hash && $pass_hash != $votepass_hash) { 
 header('HTTP/1.1 403 Forbidden');
@@ -9,13 +10,28 @@ die();
 }
 $mysqli = new mysqli($GLOBALS['hostname'], $GLOBALS['username'], $GLOBALS['password'], $GLOBALS['database']);
 if (mysqli_connect_errno()) {printf("Connect failed: %s\n", mysqli_connect_error()); return $status;}
-if(isset($_GET["clear"])){
-	$sql = "DELETE FROM votes WHERE vote_candidate_id = 0";
+if(isset($_GET["getq"])){
+	$end = '[';
+	$sql = "SELECT vote_id FROM votes WHERE vote_candidate_id = 0 OR vote_candidate_id = 999";
+	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
+	while($row = $result->fetch_row()) {
+		$end .= '{ "voteid":"'.$row[0].'" },';
+	}
+	$end = substr($end, 0,-1);
+	$end .= ']';
+die($end);
+}
+if(isset($_POST["doclear"])){
+	$sql = "DELETE FROM votes WHERE vote_candidate_id = 0 OR vote_candidate_id = 999";
 	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
 	$sql = "DELETE  ep.* FROM exit_poll_results AS ep LEFT JOIN votes AS v ON v.user_id = ep.user_id WHERE v.vote_id IS NULL";
 	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
-	$status = "Queue cleared";
 	$pusher->trigger('vote_admin', 'ticket_count', 0);
+	//header("Location: http://vote.anewamercia.com/suid.php");
+	die("ok");
+}
+if(isset($_GET["clear"])){
+	$status = "Queue cleared";
 }
 if(filter_var($_POST['id'], FILTER_VALIDATE_INT)){
 $status = "othererror";
@@ -52,7 +68,7 @@ $status = "othererror";
 		$sql = "INSERT INTO exit_poll_results VALUES (null,5,0,'$suid_hash',null)";
 		if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
 		
-		$data = array("message" => "Voter #$voter_number ready to vote (SUID: x$suid)", "status" => $status, "voter_number" => $voter_number);
+		$data = array("message" => "Voter #$voter_number <span id='status-$voter_number'>ready to vote</span> (SUID: x$suid)", "status" => $status, "voter_number" => $voter_number);
 		$pusher->trigger('vote_admin', 'voter_reg', $data);
 	}
 	$sql = "SELECT count(*) FROM votes WHERE vote_candidate_id = 0";
@@ -60,6 +76,18 @@ $status = "othererror";
 	$row = $result->fetch_row();
 	$pusher->trigger('vote_admin', 'ticket_count', $row[0]);
 	die($status);
+}
+if(isset($_GET["ping"])){
+	$sql = "SELECT count(*) FROM votes WHERE vote_candidate_id = 0";
+	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
+	$row = $result->fetch_row();
+	$pusher->trigger('vote_admin', 'ticket_count', $row[0]);
+	die($row[0]);
+}
+include 'Mobile_Detect.php';
+$detect = new Mobile_Detect();
+if ($detect->isMobile()) {
+   $tablet = true;
 }
 ?> 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
@@ -114,6 +142,48 @@ $status = "othererror";
        <script src="/js/bootstrap-transition.js"></script>
          <script src="http://js.pusher.com/1.12/pusher.min.js" type="text/javascript"></script>
   <script type="text/javascript">
+  function NoClickDelay(el) {
+	this.element = el;
+	if( window.Touch ) this.element.addEventListener('touchstart', this, false);
+}
+
+NoClickDelay.prototype = {
+	handleEvent: function(e) {
+		switch(e.type) {
+			case 'touchstart': this.onTouchStart(e); break;
+			case 'touchmove': this.onTouchMove(e); break;
+			case 'touchend': this.onTouchEnd(e); break;
+		}
+	},
+	
+	onTouchStart: function(e) {
+		e.preventDefault();
+		this.moved = false;
+		
+		this.element.addEventListener('touchmove', this, false);
+		this.element.addEventListener('touchend', this, false);
+	},
+	
+	onTouchMove: function(e) {
+		this.moved = true;
+	},
+	
+	onTouchEnd: function(e) {
+		this.element.removeEventListener('touchmove', this, false);
+		this.element.removeEventListener('touchend', this, false);
+
+		if( !this.moved ) {
+			var theTarget = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+			if(theTarget.nodeType == 3) theTarget = theTarget.parentNode;
+
+			var theEvent = document.createEvent('MouseEvents');
+			theEvent.initEvent('click', true, true);
+			theTarget.dispatchEvent(theEvent);
+		}
+	}
+};
+var theTap = $('.keypadbtn');
+new NoClickDelay(theTap);
   </script>
   </head>
   <body>
@@ -124,9 +194,10 @@ $status = "othererror";
     </div>
     <div class="container-fluid" style="padding-top:30px;">
     <div class="row-fluid">
-	    <div class="span6" style="text-align:center;" id="keypad">
+	    <div class="span6" style="text-align:center;<? if(false) echo "display:none;";?>" id="keypad">
 	    <div><h3>Enter SUID#</h3>
-<input type="text" style="width:305px;font-size:30px;height:50px;text-align:center;background-color:#fff;letter-spacing:2px;font-weight:bold;" id="input_suid" readonly /></div>
+<input type="tel" style="width:305px;font-size:30px;height:50px;text-align:center;background-color:#fff;letter-spacing:2px;font-weight:bold;" id="input_suid"   /></div>
+<div style="<? if(false) echo "display:none;";?>">
 	    	<button class="btn btn-large keypadbtn" onclick="addNum('1');" id="btnone">1</button>
 	    	<button class="btn btn-large keypadbtn" onclick="addNum('2');" id="btntwo">2</button>
 	    	<button class="btn btn-large keypadbtn" onclick="addNum('3');" id="btnthree">3</button><br />
@@ -139,20 +210,10 @@ $status = "othererror";
 	    	<button class="btn btn-large keypadbtn" onclick="doAction('clr');" style="font-size:25px;" id="btnclr">CLR</button>
 	    	<button class="btn btn-large keypadbtn" onclick="addNum('0');" id="btnzero">0</button>
 	    	<button class="btn btn-large keypadbtn" onclick="doAction('del');" style="font-size:25px;" id="btndel">DEL</button>
-	    	<div style="padding-top:10px;"><span style="" id="ticketcount">0 voting tickets</span> pending<br /><a href="suid.php?clear">clear queue</a></div> 
+</div>
+	    	<div style="padding-top:10px;"><span style="" id="ticketcount">0 voting tickets</span> active<br /><a href="#" onclick="clearList();">clear queue</a></div> 
 	    </div>
 	    <div class="span6">
-	        <?
-    if($status != ""){
-?>
-<div class="alert alert-success fade in" id="alert" style="">
-			    	<button type="button" class="close" data-dismiss="alert">×</button>
-			    	<? echo $status ?>
-			    </div> 
-			<script>setTimeout( function() {   $("#alert").alert('close'); }, 5000);</script>
-<?
-}
-?>
 	    <div id="loader" style="display:none;"><img src="/img/loader.gif" /></div>
     		<div id="alerts" style="padding-top:;">	    		
 </div>
@@ -163,6 +224,7 @@ $status = "othererror";
     	</div>
     </div>
     <script type="text/javascript">
+    
         // Enable pusher logging - don't include this in production
     Pusher.log = function(message) {
       if (window.console && window.console.log) window.console.log(message);
@@ -174,7 +236,7 @@ $status = "othererror";
     var pusher = new Pusher('4158bb9ce27c36289add'), channel = pusher.subscribe('vote_admin'), count = 0;
     channel.bind('voter_reg', function(data) {
       			var status = "alert-success";
-			    $("#alerts").prepend('<div class=\'alert '+status+' fade in\' id=\'alert-'+data.voter_number+'\'>'+data.message+'</div>');
+			    $("#alerts").append('<div class=\'alert '+status+' fade in\' id=\'alert-'+data.voter_number+'\'>'+data.message+'</div>');
     });
     channel.bind('voter_reg_error', function(data) {
     			count++;
@@ -194,12 +256,31 @@ $status = "othererror";
 			    }
     });
     channel.bind('user_voted', function(data) {
-    	$('#alert-'+data).alert('close');
+    	$('#alert-'+data).removeClass('alert-warning');
+    	$('#alert-'+data).addClass('alert-error');
+    	$('#status-'+data).html("is DONE VOTING");
+    	setTimeout( function() {   $("#alert-"+data).alert('close'); }, 30000);
+
+    });
+    channel.bind('user_voting', function(data) {
+    	$('#alert-'+data).removeClass('alert-success');
+    	$('#alert-'+data).addClass('alert-warning');
+    	$('#status-'+data).html("is now voting");
+    });
+    channel.bind('ticket_claimed', function(data) {
+    	$('#alert-'+data).removeClass('alert-success');
+    	$('#alert-'+data).addClass('alert-warning');
+    	$('#status-'+data).html(" voting ticket claimed");
     });
 	    function addNum(num){
 	    	var inVal = $('#input_suid').val();
 	    	if(inVal.length < 9){
+	    	<? if(true) {?>
 	    		$('#input_suid').val(inVal+num);
+	    		<? } else { ?>
+		    		checkValue();
+		    		
+	    		<? } ?>
 	    	}
 	    	checkValue();
 	    }
@@ -223,32 +304,52 @@ $status = "othererror";
 		    });
 		    	}
 	    }
+	    <? if(true) {?>
 	    $(window).keydown(function(event){
 	    	if($('.keypadbtn').is(':disabled')) return false;
-		    if(event.keyCode == 48){
+		    if(event.keyCode == 48 || event.keyCode == 96){
 			    $("#btnzero").click();
-		    } else if(event.keyCode == 49){
+		    } else if(event.keyCode == 49 || event.keyCode == 97){
 			    $("#btnone").click();
-		    } else if(event.keyCode == 50){
+		    } else if(event.keyCode == 50 || event.keyCode == 98){
 			    $("#btntwo").click();
-		    } else if(event.keyCode == 51){
+		    } else if(event.keyCode == 51 || event.keyCode == 99){
 			    $("#btnthree").click();
-		    } else if(event.keyCode == 52){
+		    } else if(event.keyCode == 52 || event.keyCode == 100){
 			    $("#btnfour").click();
-		    } else if(event.keyCode == 53){
+		    } else if(event.keyCode == 53 || event.keyCode == 101){
 			    $("#btnfive").click();
-		    } else if(event.keyCode == 54){
+		    } else if(event.keyCode == 54 || event.keyCode == 102){
 			    $("#btnsix").click();
-		    } else if(event.keyCode == 55){
+		    } else if(event.keyCode == 55 || event.keyCode == 103){
 			    $("#btnseven").click();
-		    } else if(event.keyCode == 56){
+		    } else if(event.keyCode == 56 || event.keyCode == 104){
 			    $("#btneight").click();
-		    } else if(event.keyCode == 57){
+		    } else if(event.keyCode == 57 || event.keyCode == 105){
 			    $("#btnnine").click();
 		    } else if(event.keyCode == 8){
-		    	    	event.preventDefault();
+		    	event.preventDefault();
 			    $("#btndel").click();
 		    }
+	    });
+	    <? } ?>
+	    function clearList(){
+		    $.post('suid.php?clear', {doclear: true}, function(data){
+		    $("#alerts").html('<div class=\'alert alert-success fade in\' id=\'cleared\'>Queue cleared</span></div>');
+		    	setTimeout( function() {   $("#cleared").alert('close'); }, 5000);
+		    		    	});
+	    }
+	    /*var id;	
+    id = setInterval(function() {
+	   $.get('suid.php?ping', function(data){  });
+	}, 30000);*/
+	    $(function(){
+	    	$.get('suid.php?getq', function(data){
+		    	for (var i = 0; i < data.length; i++) {
+				    console.log(data[i].voteid);
+				    $("#alerts").append('<div class=\'alert alert-success fade in\' id=\'alert-'+data[i].voteid+'\'>Voter #'+data[i].voteid+' <span id="status-'+data[i].voteid+'">vote pending</span></div>');
+				}
+	    	},"json");
 	    });
     </script>
     

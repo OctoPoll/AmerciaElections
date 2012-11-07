@@ -3,8 +3,10 @@ session_start();
 $password = '';
 $pass = '';
 include_once("connect.php");
+include_once("pushersettings.php");
 $mysqli = new mysqli($GLOBALS['hostname'], $GLOBALS['username'], $GLOBALS['password'], $GLOBALS['database']);
 $vote_id = $_SESSION["vote_id"];
+if(!$_SESSION["vote_id"]) die("<script>window.location = 'http://vote.anewamercia.com/touchvote.php'</script>");
 if(isset($_GET["done"])){
 	$sql = "SELECT count(*) FROM votes WHERE vote_candidate_id = 0";
 	if(!$result = $mysqli->query($sql)) die('There was an error running the query [' . $mysqli->error . ']');
@@ -12,6 +14,8 @@ if(isset($_GET["done"])){
 	$pusher->trigger('vote_admin', 'ticket_count', $row[0]);
 	$pusher->trigger('vote_admin', 'user_voted', $vote_id);
 	session_destroy();
+	//$_SESSION["vote_id"] = 0;
+	//$_SESSION["user_id"] = 0;
 	die("<script>window.location = 'http://vote.anewamercia.com/touchvote.php?thanks'</script>");
 }
 $votepass_hash = md5($votepassword);
@@ -94,6 +98,9 @@ if(isset($_SESSION["candidate"])){
            <style>
       body {
         padding-top: 0; /* 60px to make the container go all the way to the bottom of the topbar */
+        background: url('img/bg.jpg') repeat-y;
+        background-size: 100%;
+        color:white;
       }
       h3 {
 	      line-height: 25px;
@@ -106,11 +113,15 @@ if(isset($_SESSION["candidate"])){
       input[type="radio"]{
 	      width:30px;
 	      height:30px;
-	      content: url('/img/checkbox-unchecked.jpg');
+	      content: url('/img/checkbox-unchecked.png');
+	      background: url('/img/checkbox-unchecked.png') no-repeat 0px 0px;
+	      -moz-border-image: url('/img/checkbox-unchecked.png') 0 / 0px;
+
       }
 
 input[type="radio"]:checked{
-    content: url('/img/checkbox-checked.jpg');
+    content: url('/img/checkbox-checked.png');
+    background-image: url('/img/checkbox-checked.png');
 }
 label>span {
 	font-size:35px;
@@ -128,6 +139,36 @@ hr{
 	padding:10px 20px;
 	padding-left:20px;
 }
+.loading{
+	content: url("/img/loader.gif");
+	background-image: url("/img/loader.gif");
+}
+/* Firefox (Mozilla) 
+@-moz-document url-prefix() 
+{
+
+input[class=csd_radiobuttonlist]:focus
+{
+-moz-border-image: url(../images/rb_invalid_focus.png) 0 / 0px;
+}	
+.csd_box_is_invalid input[class=csd_radiobuttonlist]
+{
+-moz-border-image: url(../images/rb_invalid.png) 0 / 0px;
+-moz-appearance: none !important;
+/* -moz-background-clip: content; Firefox 1.0-3.6 
+/* background-clip: content-box; Firefox 4.0+, Opera 
+height: 20px !important; 
+width: 20px !important;
+}
+
+.csd_box_is_invalid input[class=csd_radiobuttonlist]:checked, 
+.csd_box_is_valid input[class=csd_radiobuttonlist]:checked, 
+.csd_box_is_valid input[class=csd_radiobuttonlist] 
+{
+-moz-border-image: url() 0 0 0 0;
+-moz-appearance: radio !important;
+}
+}*/
     </style>
   </head>
   <body>
@@ -138,31 +179,20 @@ hr{
 			if (document.images) {
 				img1 = new Image();
 				img2 = new Image();
-				img1.src = "/img/checkbox-unchecked.jpg";
-				img2.src = "/img/checkbox-checked.jpg";
+				img1.src = "/img/checkbox-unchecked.png";
+				img2.src = "/img/checkbox-checked.png";
 			}
 
 		//--><!]]>
 	</script>
 </div>
-     <div class="navbar navbar-inverse navbar-static-top" style="display:;">
-           	<div class="navbar-inner">
-          <a class="brand" href="/touchvote.php">Amercia Elections</a>
-          <div class="pull-right">
-          	<ul class="nav" >
-	          <li>
-		          <!--<a href="votelogin.php?logout">logout</a>-->
-		          </li>
-		         </ul>
-          </div>
-      </div>
-    </div>
+
     <div class="container-fluid" style="padding-top:10px;">
     	<div class="row-fluid">
 	    	<div class="span6 offset3" style="text-align:center;padding-top:10px;" id="">
 		    	<div class="alert alert-success fade in">
 			    	<button type="button" class="close" data-dismiss="alert">×</button>
-			    	<b>Vote submitted for <? echo $candidate; ?>.</b> Long live Amercia!
+			    	<b>Vote submitted for <? echo $candidate; ?>.</b> Long live Amercia! <a href="vote2.php">(change vote)</a>
 			    </div> 
 			</div>
 		</div>
@@ -172,81 +202,85 @@ hr{
 				<form action="vote3.php" method="post" class="form form-inline">
 				<h3>Which candidate has used the Web and Social Media most effectively?</h3>
 				<label class="radio1">
-  <input type="radio" name="1" id="optionsRadios1" value="1" style="margin-top:-5px;">
+  <input type="radio" class="radio" name="1" id="optionsRadios1" value="1" style="margin-top:-5px;">
   <span class="labelcontent">Diaz</span></label>
 <label class="radio1">
-  <input type="radio" name="1" id="optionsRadios2" value="2" style="margin-top:-5px;">
+  <input type="radio" class="radio" name="1" id="optionsRadios2" value="2" style="margin-top:-5px;">
   <span class="labelcontent">Rhodes</span>
 </label>
 <label class="radio1">
-  <input type="radio" name="1" id="optionsRadios2" value="3" style="margin-top:-5px;">
+  <input type="radio" class="radio" name="1" id="optionsRadios2" value="3" style="margin-top:-5px;">
   <span class="labelcontent">Lawrence</span>
 </label>
 <label class="radio1" style="margin-top:;">
-  <input type="radio" name="1" id="optionsRadios2" value="4" style="margin-top:-5px;">
+  <input type="radio" class="radio" name="1" id="optionsRadios2" value="9" style="margin-top:-5px;">
   <span class="labelcontent">Undecided / Unsure</span>
 </label>
 <hr />
 
 				<h3 style="margin-top:;">Which candidate has performed best in the debates?</h3>
 				<label class="radio1">
-  <input type="radio" name="2" id="optionsRadios1" value="1" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="2" id="optionsRadios1" value="1" style="margin-top:-15px;">
   <span class="labelcontent">Diaz</span></label>
 <label class="radio1">
-  <input type="radio" name="2" id="optionsRadios2" value="2" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="2" id="optionsRadios2" value="2" style="margin-top:-15px;">
   <span class="labelcontent">Rhodes</span>
 </label>
 <label class="radio1">
-  <input type="radio" name="2" id="optionsRadios2" value="3" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="2" id="optionsRadios2" value="3" style="margin-top:-15px;">
   <span class="labelcontent">Lawrence</span>
 </label>
 <label class="radio1" style="margin-top:;">
-  <input type="radio" name="2" id="optionsRadios2" value="4" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="2" id="optionsRadios2" value="9" style="margin-top:-15px;">
   <span class="labelcontent">Undecided / Unsure</span>
 </label>
 <hr />
 				<h3 style="margin-top:;">Which candidate has had the most effective advertisements?</h3>
 				<label class="radio1">
-  <input type="radio" name="3" id="optionsRadios1" value="1" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="3" id="optionsRadios1" value="1" style="margin-top:-15px;">
   <span class="labelcontent">Diaz</span></label>
 <label class="radio1">
-  <input type="radio" name="3" id="optionsRadios2" value="2" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="3" id="optionsRadios2" value="2" style="margin-top:-15px;">
   <span class="labelcontent">Rhodes</span>
 </label>
 <label class="radio1">
-  <input type="radio" name="3" id="optionsRadios2" value="3" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="3" id="optionsRadios2" value="3" style="margin-top:-15px;">
   <span class="labelcontent">Lawrence</span>
 </label>
 <label class="radio1" style="margin-top:;">
-  <input type="radio" name="3" id="optionsRadios2" value="4" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="3" id="optionsRadios2" value="9" style="margin-top:-15px;">
   <span class="labelcontent">Undecided / Unsure</span>
 </label>
 <hr />
 				<h3 style="margin-top:;">Which Vice Presidential running mate added the most to the ticket?</h3>
 				<label class="radio1">
-  <input type="radio" name="4" id="optionsRadios1" value="1" style="margin-top:-15px;">
-  <span class="labelcontent">Diaz</span></label>
+  <input type="radio" class="radio" name="4" id="optionsRadios1" value="1" style="margin-top:-15px;">
+  <span class="labelcontent">Potter</span></label>
 <label class="radio1">
-  <input type="radio" name="4" id="optionsRadios2" value="2" style="margin-top:-15px;">
-  <span class="labelcontent">Rhodes</span>
+  <input type="radio" class="radio" name="4" id="optionsRadios2" value="2" style="margin-top:-15px;">
+  <span class="labelcontent">Taylor</span>
 </label>
 <label class="radio1">
-  <input type="radio" name="4" id="optionsRadios2" value="3" style="margin-top:-15px;">
-  <span class="labelcontent">Lawrence</span>
+  <input type="radio" class="radio" name="4" id="optionsRadios2" value="3" style="margin-top:-15px;">
+  <span class="labelcontent">Countryman</span>
 </label>
 <label class="radio1" style="margin-top:;">
-  <input type="radio" name="4" id="optionsRadios2" value="4" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="4" id="optionsRadios2" value="9" style="margin-top:-15px;">
   <span class="labelcontent">Undecided / Unsure</span>
 </label>
 <hr />
 
 <h3 style="margin-top:;">If no independent candidates were included on the ballot, who would receive<br />your vote for president?</h3>
 				<label class="radio1">
-  <input type="radio" name="5" id="optionsRadios1" value="1" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="5" id="optionsRadios1" value="1" style="margin-top:-15px;">
   <span class="labelcontent">Matt Diaz</span></label>
 <label class="radio1">
-  <input type="radio" name="5" id="optionsRadios2" value="2" style="margin-top:-15px;">
+  <input type="radio" class="radio" name="5" id="optionsRadios2" value="2" style="margin-top:-15px;">
   <span class="labelcontent">Robert Lawrence</span>
+</label>
+<label class="radio1">
+  <input type="radio" class="radio" name="5" id="optionsRadios2" value="9" style="margin-top:-15px;">
+  <span class="labelcontent">Undecided / Unsure</span>
 </label>
 				</form>
 			</div>
@@ -261,15 +295,15 @@ hr{
 	    $('input[type="radio"]').change(function(){
 	    	$("#go").attr("disabled","disabled");
 	    	var val = $(this).val(), nameval = parseInt($(this).attr("name")), inputobj = $(this), q1val = $('input:radio[name=1]:checked').val(), q2val = $('input:radio[name=2]:checked').val(), q3val = $('input:radio[name=3]:checked').val(), q4val = $('input:radio[name=4]:checked').val(), q5val = $('input:radio[name=5]:checked').val();
-	    	$('input[name="'+nameval+'"]').css('content', 'url("/img/checkbox-unchecked.jpg")');
+	    	$('input[name="'+nameval+'"]').css('content', 'url("/img/checkbox-unchecked.png")');
 	    	$(this).css('content', 'url("/img/loader.gif")');
 		    $.post('vote3.php?doQ', {q : nameval, a : val}, function(data){
-		    inputobj.css('content', 'url("/img/checkbox-checked.jpg")');
+		    inputobj.css('content', 'url("/img/checkbox-checked.png")');
 			   if(data != 'ok') {
 			   	alert(data); 
 			   	} else {
 			   	totalcount = totalcount + nameval;
-			   	inputobj.parent().effect("highlight", {}, 1000);
+			   	//inputobj.parent().effect("highlight", { color : "#000"}, 1000);
 			   	if(q1val > 0 && q2val > 0 && q3val > 0 && q4val > 0 && q5val > 0 ) $("#go").removeAttr("disabled");
 			   }
 		    });
