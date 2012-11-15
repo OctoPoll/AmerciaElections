@@ -1,19 +1,23 @@
-Vote-Amercia
+Amercia Elections Co.
 ============
 
-SMS voting app built for the #ElectionClass primary election.
+'Amercia Elections', a project which took place for #ElectionClass, is a full-featured touch-based voting platform. 
+The class held a fake election for President of 'Amercia', after a long season of campaigning. Details of the Syracuse University class are available at http://electionclass.com
 
-Uses PHP, Twilio, and a little magic.
+The touch-screen voting system was built with PHP & javascript. The platform features a front-end voting interface and a back-end administration section.
 
---------
+Here's how the system worked on Election Day:
+1) Voters would approach 'registration', where a staff member would enter their student ID number into the system
+2) Their student ID number was hashed and stored in the database -- which both prevented users from voting more than once and allowed us to anonymously track data trends.
+3) Once the new voter was registered, a notification was sent to Pusher.
+4) The 'voting computer' received the notification from Pusher, checked the DB for new voters, stored the voter's ID in session & activated the voting process.
+5) The voter tapped "Let's vote" to begin. A notification that the user started voting was sent back to Pusher.
+6) After choosing their candidate and answering the exit poll questions, another notification was sent back to Pusher. A message calling the next voter was displayed on a third monitor.
+7) A PHP script polled the DB to check for other voters who hadn't yet voted & activated the touch-screen, if any existed.
 
-Users are verified by "netid", which have been stored in a users table. 
-* The first time a user votes, the phone number is tied to their profile
-* Once a phone number is set in their profile, all future votes must come from that number
+The system was profiled at http://ischool.syr.edu/newsroom/news.aspx?recid=1373
 
-Once authenticated, an anonymous vote for the candidate is recorded in the votes table.
-* An entry is also placed in the log table, noting the election the user voted in.
-* Users can only vote once in each election
+Stats from our election are available at http://vote.anewamercia.com
   
 ---------
 
