@@ -1,7 +1,7 @@
 Amercia Elections Co.
 ============
 
-'Amercia Elections', a project which took place for #ElectionClass, is a full-featured touch-based voting platform. 
+'Amercia Elections', a project which took place for #ElectionClass, is a full-featured touch-based voting platform. The real-time voting system includes a voter registration system, queue management (for voters in line), real-time analytics (powered by WebSockets, using Pusher), and a fully anonomyous -- yet accountable -- voting process. 
 The class held a fake election for President of 'Amercia', after a long season of campaigning. Details of the Syracuse University class are available at http://electionclass.com
 
 The touch-screen voting system was built with PHP & javascript. The platform features a front-end voting interface and a back-end administration section.
