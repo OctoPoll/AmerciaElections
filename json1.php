@@ -1,4 +1,4 @@
-<?
+<? 
 include_once("connect.php");
 include_once("functions.php");
 $election = "amercia";
